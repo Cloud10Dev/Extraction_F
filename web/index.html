@@ -7,24 +7,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <!-- CRITICAL: force transparent background on the NUI frame itself -->
   <style>
     html, body {
       background: transparent !important;
       background-color: transparent !important;
       margin: 0; padding: 0;
     }
-    /* matchfound overlay: no background on the full-screen wrapper */
-    #match-found {
-      background: transparent !important;
-    }
   </style>
   <link rel="stylesheet" href="./style.css">
 </head>
-<!-- NUI page body must never have a background color -->
 <body style="background:transparent;background-color:transparent;">
 
-  <!-- ══ MAIN SCREEN (party / map / deploy) ══════════════════════════════ -->
+  <!-- ══ MAIN SCREEN ════════════════════════════════════════════════ -->
   <div class="main-screen hidden" id="main-screen">
     <aside class="left-panel">
       <div class="lp-header">
@@ -86,7 +80,6 @@
         </div>
       </div>
 
-      <!-- Queue status: hidden until searching -->
       <div class="queue-status hidden" id="queue-status">
         <div class="qs-dot" id="qs-dot"></div>
         <span class="qs-label">SEARCHING FOR MATCH</span>
@@ -105,16 +98,13 @@
       </div>
     </aside>
 
-    <!-- Map canvas -->
     <div class="map-bg">
       <div class="map-pins" id="map-pins"></div>
     </div>
   </div>
 
-  <!-- ══ PILL HUD (top-centre, in-world) ═════════════════════════════════ -->
-  <!-- Wrapper is fully transparent; only .pill-hud-inner has a background -->
-  <div class="pill-hud hidden" id="pill-hud"
-       style="background:transparent!important;background-color:transparent!important;border:none!important;">
+  <!-- ══ PILL HUD (top-centre) — outer div is position:fixed, inner is the glass pill ══ -->
+  <div class="pill-hud hidden" id="pill-hud">
     <div class="pill-hud-inner">
       <div class="pill-dot" id="pill-dot"></div>
       <span id="pill-label">SEARCHING</span>
@@ -127,12 +117,9 @@
     </div>
   </div>
 
-  <!-- ══ MATCH FOUND overlay ══════════════════════════════════════════════ -->
-  <!-- background:transparent so only .overlay-box is visible -->
-  <div class="match-found-wrap hidden" id="match-found"
-       style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-              background:transparent!important;background-color:transparent!important;pointer-events:none;z-index:300;">
-    <div class="overlay-box" style="pointer-events:auto;">
+  <!-- ══ MATCH FOUND overlay ══ -->
+  <div class="match-found-wrap hidden" id="match-found">
+    <div class="overlay-box">
       <div class="ob-corners"><span></span><span></span><span></span><span></span></div>
       <div class="ob-badge">MATCH FOUND</div>
       <div class="ob-ring-wrap">
@@ -149,9 +136,8 @@
     </div>
   </div>
 
-  <!-- ══ IN-MATCH HUD (top-left) ═════════════════════════════════════════ -->
-  <div class="match-hud hidden" id="match-hud"
-       style="background:rgba(13,14,16,.82);">
+  <!-- ══ IN-MATCH HUD (top-left) ══ -->
+  <div class="match-hud hidden" id="match-hud">
     <div class="mh-header">EXFIL POINTS</div>
     <ul class="extract-pt-list" id="extract-pt-list"></ul>
     <div class="mh-status">
@@ -160,15 +146,12 @@
     </div>
   </div>
 
-  <!-- ══ EXTRACTION PROGRESS ═════════════════════════════════════════════ -->
-  <div class="exfil-progress hidden" id="extraction-progress"
-       style="background:rgba(13,14,16,.86);">
-    <div class="ep-label">EXTRACTING</div>
+  <!-- ══ EXTRACTION PROGRESS ══ -->
+  <div class="exfil-progress hidden" id="extraction-progress">
     <div class="ep-bar-bg"><div class="ep-bar" id="exfil-bar"></div></div>
-    <div class="ep-hint">STAY IN ZONE</div>
   </div>
 
-  <!-- ══ DEATH SCREEN ═════════════════════════════════════════════════════ -->
+  <!-- ══ DEATH SCREEN ══ -->
   <div class="death-screen hidden" id="death-screen">
     <div class="ds-cross">✕</div>
     <div class="ds-title">ELIMINATED</div>
@@ -176,13 +159,13 @@
     <div class="ds-bar-bg"><div class="ds-bar"></div></div>
   </div>
 
-  <!-- ══ EXTRACTION SUCCESS ═══════════════════════════════════════════════ -->
+  <!-- ══ EXTRACTION SUCCESS ══ -->
   <div class="success-screen hidden" id="extraction-success">
     <div class="ss-title">EXTRACTED</div>
     <div class="ss-sub">Operation complete</div>
   </div>
 
-  <!-- ══ INVITE TOAST ══════════════════════════════════════════════════════ -->
+  <!-- ══ INVITE TOAST ══ -->
   <div class="invite-toast hidden" id="invite-toast">
     <div class="it-header">FIRETEAM INVITE</div>
     <div class="it-msg" id="invite-toast-msg">A player invited you to their fireteam.</div>
@@ -192,7 +175,7 @@
     </div>
   </div>
 
-  <!-- ══ NOTIFICATIONS ════════════════════════════════════════════════════ -->
+  <!-- ══ NOTIFICATIONS ══ -->
   <div class="notif-container" id="notif-container"></div>
 
   <script src="./app.js"></script>
