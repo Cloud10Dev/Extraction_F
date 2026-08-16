@@ -1,6 +1,7 @@
--- client/cl_ai.lua · v3
--- Fixes: spawn is now triggered by MatchTeleport event (same as extraction).
--- Uses inMatch flag to guard; cleans up on lobby return/death.
+-- client/cl_ai.lua · v4
+-- FIX: removed inMatch guard that caused a race condition.
+-- Peds now spawn unconditionally 4s after MatchTeleport fires.
+-- Each GetRandomOxWeapon call uses a unique timestamped event name.
 
 local spawnedPeds = {}
 local aiActive    = false
@@ -29,14 +30,16 @@ local AI_MODELS = {
     `a_m_y_skater_01`,
 }
 
--- Ask server for random ox_inventory weapon; falls back after 1200ms
+-- Unique-event weapon request: each call gets its own reply channel
 local function GetRandomOxWeapon(cb)
-    local done = false
-    local evName = 'extraction:receiveRandomWeapon_' .. GetGameTimer()
+    local done   = false
+    local evName = 'extraction:rwep_' .. tostring(GetGameTimer()) .. '_' .. tostring(math.random(9999))
     RegisterNetEvent(evName)
-    AddEventHandler(evName, function(data)
+    local handler
+    handler = AddEventHandler(evName, function(data)
         if done then return end
         done = true
+        RemoveEventHandler(handler)
         if data and data.hash then
             cb({ hash = data.hash, ammo = data.ammo or 30 })
         else
@@ -44,7 +47,7 @@ local function GetRandomOxWeapon(cb)
         end
     end)
     TriggerServerEvent('extraction:getRandomWeapon', evName)
-    SetTimeout(1200, function()
+    SetTimeout(1500, function()
         if not done then
             done = true
             cb(FALLBACK_WEAPONS[math.random(#FALLBACK_WEAPONS)])
@@ -58,7 +61,7 @@ local function LoadModel(h)
     local t = 0
     while not HasModelLoaded(h) do
         Wait(50); t = t + 50
-        if t > 4000 then return false end
+        if t > 5000 then return false end
     end
     return true
 end
@@ -67,9 +70,12 @@ local function SpawnAiPed(coords, wep)
     local model = AI_MODELS[math.random(#AI_MODELS)]
     if not LoadModel(model) then return end
 
-    local ox = math.random(-25, 25) + 0.0
-    local oy = math.random(-25, 25) + 0.0
-    local x, y, z = coords.x + ox, coords.y + oy, coords.z
+    -- Scatter within 30m but avoid spawning on top of player
+    local angle  = math.random() * math.pi * 2
+    local dist   = math.random(10, 30) + 0.0
+    local x = coords.x + math.cos(angle) * dist
+    local y = coords.y + math.sin(angle) * dist
+    local z = coords.z
 
     local found, gz = GetGroundZFor_3dCoord(x, y, z + 10.0, false)
     if found then z = gz end
@@ -88,18 +94,16 @@ local function SpawnAiPed(coords, wep)
     SetEntityHealth(ped, math.random(120, 180))
     SetPedArmour(ped, 0)
 
-    -- Hostility
     local playerGroup = GetHashKey('PLAYER')
     local hatesGroup  = GetHashKey('HATES_PLAYER')
     SetPedRelationshipGroupHash(ped, hatesGroup)
     SetRelationshipBetweenGroups(5, hatesGroup, playerGroup)
     SetRelationshipBetweenGroups(5, playerGroup, hatesGroup)
 
-    -- Combat tuning
     SetPedCombatAbility(ped, 50)
     SetPedCombatRange(ped, 2)
     SetPedCombatMovement(ped, 2)
-    SetPedAccuracy(ped, 35)
+    SetPedAccuracy(ped, 40)
     SetPedAlertness(ped, 3)
     SetPedSeeingRange(ped, 80.0)
     SetPedHearingRange(ped, 60.0)
@@ -114,18 +118,18 @@ local function SpawnAiPed(coords, wep)
     table.insert(spawnedPeds, ped)
 end
 
-local function SpawnWave(data)
-    if not data then return end
+local function SpawnWave(spawnOrigin)
     aiActive = true
-    local playerCoords = GetEntityCoords(PlayerPedId())
     local count = math.random(5, 9)
-    for i = 1, count do
-        Wait(math.random(400, 1000))
-        if not aiActive then break end
-        GetRandomOxWeapon(function(wep)
-            if aiActive then SpawnAiPed(playerCoords, wep) end
-        end)
-    end
+    CreateThread(function()
+        for i = 1, count do
+            Wait(math.random(500, 1200))
+            if not aiActive then break end
+            GetRandomOxWeapon(function(wep)
+                if aiActive then SpawnAiPed(spawnOrigin, wep) end
+            end)
+        end
+    end)
 end
 
 local function CleanupPeds()
@@ -136,25 +140,16 @@ local function CleanupPeds()
     spawnedPeds = {}
 end
 
--- ─── Trigger: same MatchTeleport event that cl_extraction uses ──────────────
--- We wait 3s after teleport so the player has landed before peds spawn
+-- ─── Trigger: 4 seconds after teleport, no inMatch guard ────────────────
+-- Wait 4s so the teleport settles and player ped is on solid ground.
 RegisterNetEvent(Config.Events.MatchTeleport, function(data)
-    CleanupPeds()  -- clear any previous match peds
-    SetTimeout(3000, function()
-        if inMatch then  -- inMatch is set by cl_extraction before this fires
-            SpawnWave(data)
-        end
+    CleanupPeds()
+    local origin = vector3(data.coords.x, data.coords.y, data.coords.z)
+    SetTimeout(4000, function()
+        SpawnWave(origin)
     end)
 end)
 
-RegisterNetEvent(Config.Events.RespawnLobby, function()
-    CleanupPeds()
-end)
-
-RegisterNetEvent(Config.Events.ExtractionSuccess, function()
-    CleanupPeds()
-end)
-
-RegisterNetEvent('extraction:aiCleanup', function()
-    CleanupPeds()
-end)
+RegisterNetEvent(Config.Events.RespawnLobby, function() CleanupPeds() end)
+RegisterNetEvent(Config.Events.ExtractionSuccess, function() CleanupPeds() end)
+RegisterNetEvent('extraction:aiCleanup', function() CleanupPeds() end)
