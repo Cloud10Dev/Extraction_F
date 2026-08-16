@@ -6,7 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
   <title>GAMEMODEX</title>
 </head>
 <body>
@@ -104,12 +104,14 @@
      PILL HUD (minimized, top-center)
 ═══════════════════════════════════════════════════════ -->
 <div id="pill-hud" class="pill-hud hidden">
-  <div class="pill-dot" id="pill-dot"></div>
-  <span id="pill-label">SEARCHING</span>
-  <span id="pill-timer" class="pill-timer">00:00</span>
-  <button id="pill-expand" class="pill-expand" aria-label="Expand">
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-  </button>
+  <div class="pill-hud-inner">
+    <div class="pill-dot" id="pill-dot"></div>
+    <span id="pill-label">SEARCHING</span>
+    <span id="pill-timer" class="pill-timer">00:00</span>
+    <button id="pill-expand" class="pill-expand" aria-label="Expand">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -146,7 +148,9 @@
 ═══════════════════════════════════════════════════════ -->
 <div id="extraction-progress" class="exfil-progress hidden">
   <div class="ep-label">EXTRACTING</div>
-  <div class="ep-bar-bg"><div id="exfil-bar" class="ep-bar"></div></div>
+  <div class="ep-bar-wrap">
+    <div class="ep-bar-bg"><div id="exfil-bar" class="ep-bar"></div></div>
+  </div>
   <div class="ep-hint">STAY WITHIN ZONE</div>
 </div>
 
@@ -164,7 +168,7 @@
      EXTRACTION SUCCESS
 ═══════════════════════════════════════════════════════ -->
 <div id="extraction-success" class="success-screen hidden">
-  <svg width="52" height="52" viewBox="0 0 52 52" fill="none"><path d="M10 26l12 12 20-20" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg width="56" height="56" viewBox="0 0 52 52" fill="none"><path d="M10 26l12 12 20-20" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <div class="ss-title">EXTRACTED</div>
   <div class="ss-sub">OPENING STASH…</div>
 </div>
@@ -176,14 +180,14 @@
   <div class="it-header">FIRETEAM INVITE</div>
   <p id="invite-toast-msg" class="it-msg">Loading…</p>
   <div class="it-actions">
-    <button id="btn-accept-invite" class="btn-deploy" style="flex:1;padding:8px">ACCEPT</button>
-    <button id="btn-decline-invite" class="btn-leave" style="flex:1;padding:8px">DECLINE</button>
+    <button id="btn-accept-invite" class="btn-deploy" style="flex:1;padding:9px">ACCEPT</button>
+    <button id="btn-decline-invite" class="btn-leave" style="flex:1;padding:9px">DECLINE</button>
   </div>
 </div>
 
 <!-- NOTIFICATIONS -->
 <div id="notif-container" class="notif-container" aria-live="polite"></div>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
