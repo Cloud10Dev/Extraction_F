@@ -65,7 +65,6 @@ Config.Maps = {
     },
 }
 
--- Helper: get map config by id (falls back to first map)
 function Config.GetMap(mapId)
     for _, m in ipairs(Config.Maps) do
         if m.id == mapId then return m end
@@ -97,7 +96,7 @@ Config.Death = {
 }
 
 Config.Gameplay = {
-    EnableAI     = false,
+    EnableAI     = true,   -- AI peds enabled
     FriendlyFire = false,
 }
 
@@ -114,29 +113,30 @@ Config.LobbySpawns = {
     vector4(-256.40, -963.32, 31.22, 95.0),
 }
 
-Config.StashNpc = {
-    model            = 's_m_m_armoured_01',
-    coords           = vector4(-272.40, -958.50, 31.22, 25.0),
-    interactDistance = 2.5,
-}
-
 Config.Events = {
-    PartyInvite        = 'extraction:partyInvite',
-    PartyInviteAccept  = 'extraction:partyInviteAccept',
-    PartyInviteDecline = 'extraction:partyInviteDecline',
-    PartyLeave         = 'extraction:partyLeave',
-    PartyUpdate        = 'extraction:partyUpdate',
-    PartyKick          = 'extraction:partyKick',
-    QueueJoin          = 'extraction:queueJoin',
-    QueueCancel        = 'extraction:queueCancel',
-    MatchFound         = 'extraction:matchFound',
-    MatchTeleport      = 'extraction:matchTeleport',
-    MatchEnd           = 'extraction:matchEnd',
-    ExtractionStart    = 'extraction:extractStart',
-    ExtractionCancel   = 'extraction:extractCancel',
-    ExtractionSuccess  = 'extraction:extractSuccess',
-    ExtractionFail     = 'extraction:extractFail',
-    PlayerDied         = 'extraction:playerDied',
-    RespawnLobby       = 'extraction:respawnLobby',
-    OpenStash          = 'extraction:openStash',
+    -- Party
+    PartyCreate     = 'extraction:partyCreate',
+    PartyInvite     = 'extraction:partyInvite',
+    PartyAccept     = 'extraction:partyAccept',
+    PartyDecline    = 'extraction:partyDecline',
+    PartyLeave      = 'extraction:partyLeave',
+    PartyUpdate     = 'extraction:partyUpdate',
+    IncomingInvite  = 'extraction:incomingInvite',
+    -- Matchmaking
+    QueueJoin       = 'extraction:queueJoin',
+    QueueLeave      = 'extraction:queueLeave',
+    QueueUpdate     = 'extraction:queueUpdate',
+    -- Match
+    MatchTeleport   = 'extraction:matchTeleport',
+    MatchCountdown  = 'extraction:matchCountdown',
+    -- Extraction
+    ExtractionStart   = 'extraction:extractionStart',
+    ExtractionSuccess = 'extraction:extractionSuccess',
+    ExtractionCancel  = 'extraction:extractionCancel',
+    ExtractionFail    = 'extraction:extractionFail',
+    -- Death / Respawn
+    PlayerDied    = 'extraction:playerDied',
+    RespawnLobby  = 'extraction:respawnLobby',
+    -- Stash
+    OpenStash     = 'extraction:openStash',
 }

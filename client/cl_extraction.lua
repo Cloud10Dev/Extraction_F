@@ -1,12 +1,10 @@
--- cl_extraction.lua · v3
+-- cl_extraction.lua · v4
 -- Extraction is proximity-based: player walks into zone, timer starts automatically.
--- Player CAN move freely inside the zone. If they leave, extraction cancels.
--- No key press required.
+-- Fixed: use ~n~ for GTA text line breaks (not \n)
 inMatch = false
 local matchData       = nil
-local extractionState = 'idle'   -- idle | near | extracting
+local extractionState = 'idle'
 local cancelProgress  = nil
-local exfilThread     = nil
 
 RegisterNetEvent(Config.Events.MatchTeleport, function(data)
     matchData       = data
@@ -47,7 +45,6 @@ function DrawZone(zone)
     end
 end
 
--- ─── Main extraction loop ───────────────────────────────────────────────────
 CreateThread(function()
     while true do
         Wait(inMatch and 0 or 500)
@@ -63,7 +60,6 @@ CreateThread(function()
                 local ptVec = vector3(pt.coords.x, pt.coords.y, pt.coords.z)
                 local dist  = #(myPos - ptVec)
 
-                -- Draw marker
                 DrawMarker(1,
                     pt.coords.x, pt.coords.y, pt.coords.z,
                     0,0,0, 0,0,0,
@@ -71,27 +67,23 @@ CreateThread(function()
                     232, 97, 42, 120,
                     false, true, 2, nil, nil, false)
 
-                -- Label: no key prompt anymore
-                CUtils.Draw3DText(ptVec, pt.label .. '\nExtract')
+                -- Use ~n~ for line breaks in GTA native text (not \n)
+                CUtils.Draw3DText(ptVec, pt.label .. '~n~Extract')
 
                 if dist < nearestDist then nearestDist = dist; nearest = i end
             end
         end
 
-        -- ── Proximity detection ─────────────────────────────────────────────
         if nearest and nearestDist <= radius then
-            -- Just entered zone
             if extractionState == 'idle' then
                 extractionState = 'near'
                 CUtils.Notify('Extraction started — stay in zone!', 'success')
                 StartExtraction(nearest)
             end
         else
-            -- Player left zone while extracting → cancel
             if extractionState == 'extracting' then
                 CancelExtraction('Left extraction zone!')
             elseif extractionState == 'near' then
-                -- edge case: started but server didn't respond yet
                 extractionState = 'idle'
             end
         end
@@ -100,17 +92,14 @@ CreateThread(function()
     end
 end)
 
--- ─── Start extraction ───────────────────────────────────────────────────────
 function StartExtraction(ptIndex)
     if extractionState ~= 'near' then return end
     extractionState = 'extracting'
-    -- Player can still move — no freeze
     TriggerServerEvent(Config.Events.ExtractionStart, ptIndex)
     CUtils.SendNui('extractionStart', { duration = Config.Extraction.Duration })
-    cancelProgress = CUtils.ProgressBar(Config.Extraction.Duration, 'Extracting — stay in zone...', function() end, nil)
+    cancelProgress = CUtils.ProgressBar(Config.Extraction.Duration, '', function() end, nil)
 end
 
--- ─── Cancel extraction ──────────────────────────────────────────────────────
 function CancelExtraction(reason)
     if extractionState ~= 'extracting' then return end
     if cancelProgress then cancelProgress(); cancelProgress = nil end
@@ -120,7 +109,6 @@ function CancelExtraction(reason)
     CUtils.Notify(reason or 'Extraction cancelled.', 'error')
 end
 
--- ─── Server events ──────────────────────────────────────────────────────────
 RegisterNetEvent(Config.Events.ExtractionSuccess, function()
     if cancelProgress then cancelProgress(); cancelProgress = nil end
     extractionState = 'idle'

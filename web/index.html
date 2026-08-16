@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--
+    FiveM CEF NUI TRANSPARENCY
+    The background-color meta tag tells the Chromium Embedded Framework
+    renderer to use a transparent background for this NUI page.
+    Without this, CEF paints a solid black/white rect behind the iframe
+    regardless of any CSS rules.
+  -->
+  <meta name="theme-color" content="transparent">
   <title>Extraction</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +26,7 @@
 </head>
 <body style="background:transparent;background-color:transparent;">
 
-  <!-- ══ MAIN SCREEN ════════════════════════════════════════════════ -->
+  <!-- ══ MAIN SCREEN ══ -->
   <div class="main-screen hidden" id="main-screen">
     <aside class="left-panel">
       <div class="lp-header">
@@ -41,24 +49,16 @@
           </svg>
         </button>
       </div>
-
       <div class="map-info">
         <span class="mi-mode-label" id="mi-mode">TACTICAL OPS · DEFAULT</span>
         <div class="mi-name" id="mi-name">SELECT A ZONE</div>
         <div class="mi-thumb"></div>
         <p class="mi-desc" id="mi-desc">Select your insertion point and deploy into the operation zone.</p>
         <div class="mi-meta">
-          <div class="mi-meta-item">
-            <span class="mi-meta-label">PLAYERS</span>
-            <span class="mi-meta-val" id="mi-players">2-20</span>
-          </div>
-          <div class="mi-meta-item">
-            <span class="mi-meta-label">DIFFICULTY</span>
-            <span class="mi-meta-val" id="mi-diff">DEFAULT</span>
-          </div>
+          <div class="mi-meta-item"><span class="mi-meta-label">PLAYERS</span><span class="mi-meta-val" id="mi-players">2-20</span></div>
+          <div class="mi-meta-item"><span class="mi-meta-label">DIFFICULTY</span><span class="mi-meta-val" id="mi-diff">DEFAULT</span></div>
         </div>
       </div>
-
       <div class="lp-section">
         <div class="lp-section-label">INSERTION MODE</div>
         <div class="mode-row">
@@ -67,52 +67,39 @@
           <button class="mode-btn" data-mode="Squad">SQUAD</button>
         </div>
       </div>
-
       <div class="lp-section">
-        <div class="lp-section-label">
-          FIRETEAM
-          <span class="lp-badge" id="member-count">1/1</span>
-        </div>
+        <div class="lp-section-label">FIRETEAM<span class="lp-badge" id="member-count">1/1</span></div>
         <ul class="member-list" id="member-list"></ul>
         <div class="invite-row">
           <input class="invite-input" id="invite-input" type="number" placeholder="PLAYER ID">
           <button class="btn-invite" id="btn-invite">INVITE</button>
         </div>
       </div>
-
       <div class="queue-status hidden" id="queue-status">
         <div class="qs-dot" id="qs-dot"></div>
         <span class="qs-label">SEARCHING FOR MATCH</span>
         <span class="qs-time" id="queue-time-display">00:00</span>
       </div>
-
       <div class="lp-actions">
         <button class="btn-deploy" id="btn-queue">DEPLOY</button>
         <button class="btn-abort hidden" id="btn-cancel-queue">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>
-          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
           ABORT
         </button>
         <button class="btn-leave" id="btn-leave-party">LEAVE TEAM</button>
       </div>
     </aside>
-
-    <div class="map-bg">
-      <div class="map-pins" id="map-pins"></div>
-    </div>
+    <div class="map-bg"><div class="map-pins" id="map-pins"></div></div>
   </div>
 
-  <!-- ══ PILL HUD (top-centre) — outer div is position:fixed, inner is the glass pill ══ -->
+  <!-- ══ PILL HUD (top-centre) ══ -->
   <div class="pill-hud hidden" id="pill-hud">
     <div class="pill-hud-inner">
       <div class="pill-dot" id="pill-dot"></div>
       <span id="pill-label">SEARCHING</span>
       <span class="pill-timer" id="pill-timer">00:00</span>
       <button class="pill-expand" id="pill-expand" aria-label="Expand">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M6 9l6 6 6-6"/>
-        </svg>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
       </button>
     </div>
   </div>
@@ -124,9 +111,8 @@
       <div class="ob-badge">MATCH FOUND</div>
       <div class="ob-ring-wrap">
         <svg class="ob-ring-svg" viewBox="0 0 100 100">
-          <circle class="ring-bg"  cx="50" cy="50" r="42"/>
-          <circle class="ring-fill" cx="50" cy="50" r="42" id="countdown-ring"
-                  style="stroke-dasharray:263.9;"/>
+          <circle class="ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="ring-fill" cx="50" cy="50" r="42" id="countdown-ring" style="stroke-dasharray:263.9;"/>
         </svg>
         <div class="ob-num" id="countdown-num">5</div>
       </div>
@@ -140,13 +126,10 @@
   <div class="match-hud hidden" id="match-hud">
     <div class="mh-header">EXFIL POINTS</div>
     <ul class="extract-pt-list" id="extract-pt-list"></ul>
-    <div class="mh-status">
-      <div class="mh-dot"></div>
-      OPERATION LIVE
-    </div>
+    <div class="mh-status"><div class="mh-dot"></div>OPERATION LIVE</div>
   </div>
 
-  <!-- ══ EXTRACTION PROGRESS ══ -->
+  <!-- ══ EXTRACTION PROGRESS (bar only) ══ -->
   <div class="exfil-progress hidden" id="extraction-progress">
     <div class="ep-bar-bg"><div class="ep-bar" id="exfil-bar"></div></div>
   </div>

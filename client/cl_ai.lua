@@ -1,7 +1,8 @@
--- client/cl_ai.lua · v4
--- FIX: removed inMatch guard that caused a race condition.
--- Peds now spawn unconditionally 4s after MatchTeleport fires.
--- Each GetRandomOxWeapon call uses a unique timestamped event name.
+-- client/cl_ai.lua · v5
+-- Respects Config.Gameplay.EnableAI flag.
+-- No inMatch guard — fires 4s after MatchTeleport unconditionally (if AI enabled).
+
+if not Config.Gameplay.EnableAI then return end
 
 local spawnedPeds = {}
 local aiActive    = false
@@ -30,7 +31,6 @@ local AI_MODELS = {
     `a_m_y_skater_01`,
 }
 
--- Unique-event weapon request: each call gets its own reply channel
 local function GetRandomOxWeapon(cb)
     local done   = false
     local evName = 'extraction:rwep_' .. tostring(GetGameTimer()) .. '_' .. tostring(math.random(9999))
@@ -70,9 +70,8 @@ local function SpawnAiPed(coords, wep)
     local model = AI_MODELS[math.random(#AI_MODELS)]
     if not LoadModel(model) then return end
 
-    -- Scatter within 30m but avoid spawning on top of player
-    local angle  = math.random() * math.pi * 2
-    local dist   = math.random(10, 30) + 0.0
+    local angle = math.random() * math.pi * 2
+    local dist  = math.random(10, 30) + 0.0
     local x = coords.x + math.cos(angle) * dist
     local y = coords.y + math.sin(angle) * dist
     local z = coords.z
@@ -140,8 +139,6 @@ local function CleanupPeds()
     spawnedPeds = {}
 end
 
--- ─── Trigger: 4 seconds after teleport, no inMatch guard ────────────────
--- Wait 4s so the teleport settles and player ped is on solid ground.
 RegisterNetEvent(Config.Events.MatchTeleport, function(data)
     CleanupPeds()
     local origin = vector3(data.coords.x, data.coords.y, data.coords.z)
@@ -150,6 +147,6 @@ RegisterNetEvent(Config.Events.MatchTeleport, function(data)
     end)
 end)
 
-RegisterNetEvent(Config.Events.RespawnLobby, function() CleanupPeds() end)
+RegisterNetEvent(Config.Events.RespawnLobby,      function() CleanupPeds() end)
 RegisterNetEvent(Config.Events.ExtractionSuccess, function() CleanupPeds() end)
-RegisterNetEvent('extraction:aiCleanup', function() CleanupPeds() end)
+RegisterNetEvent('extraction:aiCleanup',          function() CleanupPeds() end)
