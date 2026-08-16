@@ -6,10 +6,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
   <title>GAMEMODEX</title>
 </head>
-<body>
+<body style="background:transparent;background-color:transparent">
 
 <!-- ═══════════════════════════════════════════════════════
      MAIN SCREEN  — map view + left panel
@@ -18,7 +18,6 @@
 
   <!-- GTA MAP BACKGROUND -->
   <div class="map-bg">
-    <!-- Map pins injected by JS -->
     <div id="map-pins" class="map-pins"></div>
   </div>
 
@@ -41,7 +40,7 @@
       </button>
     </div>
 
-    <!-- Map info (shown when a map pin is selected) -->
+    <!-- Map info -->
     <div id="map-info" class="map-info">
       <div class="mi-mode-row">
         <span class="mi-mode-label" id="mi-mode">TACTICAL OPS · NORMAL</span>
@@ -100,9 +99,7 @@
   </div><!-- /left-panel -->
 </div><!-- /main-screen -->
 
-<!-- ═══════════════════════════════════════════════════════
-     PILL HUD (minimized, top-center)
-═══════════════════════════════════════════════════════ -->
+<!-- PILL HUD -->
 <div id="pill-hud" class="pill-hud hidden">
   <div class="pill-hud-inner">
     <div class="pill-dot" id="pill-dot"></div>
@@ -114,9 +111,7 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     MATCH FOUND OVERLAY
-═══════════════════════════════════════════════════════ -->
+<!-- MATCH FOUND OVERLAY -->
 <div id="match-found" class="overlay hidden">
   <div class="overlay-box">
     <div class="ob-corners"><span></span><span></span><span></span><span></span></div>
@@ -134,18 +129,14 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     IN-MATCH HUD (bottom-left)
-═══════════════════════════════════════════════════════ -->
+<!-- IN-MATCH HUD -->
 <div id="match-hud" class="match-hud hidden">
   <div class="mh-header">EXFIL POINTS</div>
   <ul id="extract-pt-list" class="extract-pt-list"></ul>
   <div class="mh-status"><div class="mh-dot"></div>OPERATION LIVE</div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     EXTRACTION PROGRESS (bottom-center)
-═══════════════════════════════════════════════════════ -->
+<!-- EXTRACTION PROGRESS -->
 <div id="extraction-progress" class="exfil-progress hidden">
   <div class="ep-label">EXTRACTING</div>
   <div class="ep-bar-wrap">
@@ -154,9 +145,7 @@
   <div class="ep-hint">STAY WITHIN ZONE</div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     DEATH SCREEN
-═══════════════════════════════════════════════════════ -->
+<!-- DEATH SCREEN -->
 <div id="death-screen" class="death-screen hidden">
   <div class="ds-cross">✕</div>
   <div class="ds-title">K.I.A.</div>
@@ -164,18 +153,14 @@
   <div class="ds-bar-bg"><div id="death-bar" class="ds-bar"></div></div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     EXTRACTION SUCCESS
-═══════════════════════════════════════════════════════ -->
+<!-- EXTRACTION SUCCESS -->
 <div id="extraction-success" class="success-screen hidden">
   <svg width="56" height="56" viewBox="0 0 52 52" fill="none"><path d="M10 26l12 12 20-20" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <div class="ss-title">EXTRACTED</div>
   <div class="ss-sub">OPENING STASH…</div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     INCOMING INVITE TOAST
-═══════════════════════════════════════════════════════ -->
+<!-- INCOMING INVITE TOAST -->
 <div id="invite-toast" class="invite-toast hidden">
   <div class="it-header">FIRETEAM INVITE</div>
   <p id="invite-toast-msg" class="it-msg">Loading…</p>
@@ -188,6 +173,6 @@
 <!-- NOTIFICATIONS -->
 <div id="notif-container" class="notif-container" aria-live="polite"></div>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

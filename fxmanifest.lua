@@ -6,7 +6,7 @@ lua54 'yes'
 name 'extraction_shooter'
 author 'Cloud10Dev'
 description 'Extraction shooter — party, matchmaking, routing buckets, AI peds, ox_inventory stash'
-version '1.3.0'
+version '1.4.0'
 
 shared_scripts {
     'config.lua'
@@ -19,6 +19,7 @@ server_scripts {
     'server/sv_matchmaking.lua',
     'server/sv_instance.lua',
     'server/sv_extraction.lua',
+    'server/sv_ai.lua',
     'server/sv_debug.lua'
 }
 

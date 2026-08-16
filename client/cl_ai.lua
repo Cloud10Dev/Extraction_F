@@ -1,13 +1,22 @@
--- cl_ai.lua · AI peds with correct weapons, combat, and looting
+-- client/cl_ai.lua · v2 — ox_inventory random weapons + correct ammo per weapon
+
 local spawnedPeds = {}
 local aiActive    = false
 
-local AI_WEAPONS = {
-    { hash = `WEAPON_PISTOL`,       ammo = 24  },
-    { hash = `WEAPON_MICROSMG`,     ammo = 30  },
-    { hash = `WEAPON_APPISTOL`,     ammo = 18  },
-    { hash = `WEAPON_SMG`,          ammo = 30  },
-    { hash = `WEAPON_CARBINERIFLE`, ammo = 30  },
+-- Local fallback weapon pool (used if server doesn't respond in time)
+local FALLBACK_WEAPONS = {
+    { hash = `WEAPON_PISTOL`,         ammo = 24 },
+    { hash = `WEAPON_PISTOL_MK2`,     ammo = 30 },
+    { hash = `WEAPON_APPISTOL`,       ammo = 18 },
+    { hash = `WEAPON_MICROSMG`,       ammo = 30 },
+    { hash = `WEAPON_SMG`,            ammo = 30 },
+    { hash = `WEAPON_SMG_MK2`,        ammo = 32 },
+    { hash = `WEAPON_COMBATPDW`,      ammo = 30 },
+    { hash = `WEAPON_CARBINERIFLE`,   ammo = 30 },
+    { hash = `WEAPON_ASSAULTRIFLE`,   ammo = 30 },
+    { hash = `WEAPON_PUMPSHOTGUN`,    ammo = 8  },
+    { hash = `WEAPON_HEAVYSHOTGUN`,   ammo = 8  },
+    { hash = `WEAPON_SAWNOFFSHOTGUN`, ammo = 8  },
 }
 
 local AI_MODELS = {
@@ -18,6 +27,31 @@ local AI_MODELS = {
     `g_m_m_ghetto_01`,
     `a_m_y_skater_01`,
 }
+
+-- Ask the server for a random weapon from the ox_inventory item registry.
+-- Calls cb({ hash, ammo }) — falls back to local pool after 1200ms.
+local function GetRandomOxWeapon(cb)
+    local done = false
+
+    RegisterNetEvent('extraction:receiveRandomWeapon', function(data)
+        if done then return end
+        done = true
+        if data and data.hash then
+            cb({ hash = data.hash, ammo = data.ammo or 30 })
+        else
+            cb(FALLBACK_WEAPONS[math.random(#FALLBACK_WEAPONS)])
+        end
+    end)
+
+    TriggerServerEvent('extraction:getRandomWeapon')
+
+    SetTimeout(1200, function()
+        if not done then
+            done = true
+            cb(FALLBACK_WEAPONS[math.random(#FALLBACK_WEAPONS)])
+        end
+    end)
+end
 
 local function LoadModel(modelHash)
     if not IsModelInCdimage(modelHash) then return false end
@@ -30,7 +64,7 @@ local function LoadModel(modelHash)
     return true
 end
 
-local function SpawnAiPed(spawnCoords)
+local function SpawnAiPed(spawnCoords, wep)
     local modelHash = AI_MODELS[math.random(#AI_MODELS)]
     if not LoadModel(modelHash) then return nil end
 
@@ -48,7 +82,6 @@ local function SpawnAiPed(spawnCoords)
     SetEntityOnGroundProperly(ped)
     SetPedCanRagdoll(ped, true)
 
-    local wep = AI_WEAPONS[math.random(#AI_WEAPONS)]
     GiveWeaponToPed(ped, wep.hash, wep.ammo, false, true)
     SetCurrentPedWeapon(ped, wep.hash, true)
     SetPedAmmo(ped, wep.hash, wep.ammo)
@@ -75,29 +108,10 @@ local function SpawnAiPed(spawnCoords)
     SetPedFleeAttributes(ped, 0, false)
     SetBlockingOfNonTemporaryEvents(ped, false)
     SetPedCanBeTargetted(ped, true)
-    -- NOTE: SetPedIsTargetPriority removed — not a valid FiveM native
+
+    TaskCombatPed(ped, PlayerPedId(), 0, 16)
 
     return ped
-end
-
-local function SetupPedCombat(ped)
-    if not DoesEntityExist(ped) then return end
-    local player = PlayerPedId()
-    TaskCombatPed(ped, player, 0, 16)
-    CreateThread(function()
-        while DoesEntityExist(ped) and not IsPedDead(ped) and aiActive do
-            Wait(800)
-            if not DoesEntityExist(ped) or IsPedDead(ped) then break end
-            local dist = #(GetEntityCoords(ped) - GetEntityCoords(player))
-            if dist < 80.0 then
-                if not IsPedInCombat(ped, player) then
-                    TaskCombatPed(ped, player, 0, 16)
-                end
-            else
-                TaskWanderInArea(ped, GetEntityCoords(ped).x, GetEntityCoords(ped).y, GetEntityCoords(ped).z, 25.0, 2.0, 0.0)
-            end
-        end
-    end)
 end
 
 local function SpawnMatchAI(mapData)
@@ -108,11 +122,13 @@ local function SpawnMatchAI(mapData)
         Wait(math.random(300, 900))
         if not aiActive then break end
         local ref = mapData.spawns[math.random(#mapData.spawns)]
-        local ped = SpawnAiPed(vector3(ref.x, ref.y, ref.z))
-        if ped then
-            table.insert(spawnedPeds, ped)
-            SetupPedCombat(ped)
-        end
+        GetRandomOxWeapon(function(wep)
+            if not aiActive then return end
+            local ped = SpawnAiPed(vector3(ref.x, ref.y, ref.z), wep)
+            if ped then
+                table.insert(spawnedPeds, ped)
+            end
+        end)
     end
 end
 

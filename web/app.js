@@ -1,5 +1,64 @@
-// GAMEMODEX · app.js v4
+// GAMEMODEX · app.js v6
+// Changes: Web Audio sounds system + wired into all message events
 
+// ─── Sound system (Web Audio API — zero external files needed) ───────────────
+var _audioCtx = null;
+function _ac() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+function _tone(freq, freqEnd, dur, vol, wave) {
+  try {
+    var ctx = _ac();
+    var o = ctx.createOscillator();
+    var g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.type = wave || 'sine';
+    o.frequency.setValueAtTime(freq, ctx.currentTime);
+    if (freqEnd) o.frequency.linearRampToValueAtTime(freqEnd, ctx.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.start(ctx.currentTime);
+    o.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+
+var Sounds = {
+  matchFound: function() {
+    _tone(440, 880, 0.12, 0.20, 'square');
+    setTimeout(function() { _tone(660, 1100, 0.18, 0.25, 'square'); }, 140);
+  },
+  countdownTick: function() {
+    _tone(600, 0, 0.06, 0.12, 'square');
+  },
+  countdownFinal: function() {
+    _tone(880, 1200, 0.15, 0.28, 'sawtooth');
+  },
+  extractionStart: function() {
+    _tone(300, 700, 0.28, 0.18, 'sine');
+  },
+  extractionSuccess: function() {
+    _tone(523, 0, 0.15, 0.20, 'sine');
+    setTimeout(function() { _tone(659, 0, 0.15, 0.20, 'sine'); }, 160);
+    setTimeout(function() { _tone(784, 0, 0.30, 0.25, 'sine'); }, 320);
+  },
+  extractionCancel: function() {
+    _tone(400, 180, 0.25, 0.20, 'sawtooth');
+  },
+  playerDied: function() {
+    _tone(220, 80, 0.35, 0.22, 'sawtooth');
+  },
+  returnedToLobby: function() {
+    _tone(350, 0, 0.10, 0.10, 'sine');
+  },
+  invite: function() {
+    _tone(800, 0, 0.07, 0.14, 'square');
+    setTimeout(function() { _tone(800, 0, 0.07, 0.14, 'square'); }, 120);
+  },
+};
+
+// ─── NUI callback ─────────────────────────────────────────────────────────────
 function nuiCallback(name, data) {
   fetch('https://extraction_shooter/' + name, {
     method: 'POST',
@@ -8,7 +67,7 @@ function nuiCallback(name, data) {
   }).catch(function() {});
 }
 
-// ─── DOM refs ────────────────────────────────────────
+// ─── DOM refs ─────────────────────────────────────────────────────────────────
 var D = {
   mainScreen:    document.getElementById('main-screen'),
   mapPins:       document.getElementById('map-pins'),
@@ -56,27 +115,25 @@ var D = {
 var RING_C = 2 * Math.PI * 42;
 if (D.cntRing) D.cntRing.style.strokeDasharray = RING_C;
 
-// ─── State ───────────────────────────────────────────
+// ─── State ────────────────────────────────────────────────────────────────────
 var S = {
-  mode:          'Solo',
-  selectedMap:   null,
-  maps:          [],
-  party:         null,
-  inviteKey:     null,
-  queueTick:     null,
-  cntTick:       null,
-  pillTick:      null,
-  pillMode:      null,
+  mode:        'Solo',
+  selectedMap: null,
+  maps:        [],
+  party:       null,
+  inviteKey:   null,
+  queueTick:   null,
+  cntTick:     null,
+  pillTick:    null,
+  pillMode:    null,
 };
 
-// ─── Helpers ─────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function show(el) { el && el.classList.remove('hidden'); }
 function hide(el) { el && el.classList.add('hidden'); }
-
 function fmt(s) {
   return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
 }
-
 function notif(msg, type) {
   var n = document.createElement('div');
   n.className = 'notif' + (type ? ' '+type : '');
@@ -88,7 +145,7 @@ function notif(msg, type) {
   }, 3200);
 }
 
-// ─── Pill HUD ────────────────────────────────────────
+// ─── Pill HUD ─────────────────────────────────────────────────────────────────
 function pillStart(mode) {
   S.pillMode = mode;
   D.pillDot.classList.toggle('in-match', mode === 'match');
@@ -106,7 +163,7 @@ function pillStop() {
   hide(D.pillHud); S.pillMode = null;
 }
 
-// ─── Queue timer ─────────────────────────────────────
+// ─── Queue timer ──────────────────────────────────────────────────────────────
 function queueStart() {
   if (S.queueTick) clearInterval(S.queueTick);
   var t0 = Date.now();
@@ -119,7 +176,7 @@ function queueStop() {
   if (D.queueTime) D.queueTime.textContent = '00:00';
 }
 
-// ─── Match countdown ─────────────────────────────────
+// ─── Match countdown ──────────────────────────────────────────────────────────
 function cntStart(total) {
   if (S.cntTick) clearInterval(S.cntTick);
   var rem = total;
@@ -128,6 +185,8 @@ function cntStart(total) {
     D.matchFoundTxt.textContent = 'DEPLOYING IN ' + rem + 's';
     D.cntRing.style.strokeDashoffset = RING_C * (1 - rem/total);
     D.deployBar.style.width = ((total-rem)/total*100) + '%';
+    if (rem === 1) Sounds.countdownFinal();
+    else           Sounds.countdownTick();
   }
   tick();
   S.cntTick = setInterval(function() {
@@ -136,10 +195,7 @@ function cntStart(total) {
   }, 1000);
 }
 
-// ─── Map pins ────────────────────────────────────────
-// Approximate GTA V world coords → % position on map background
-// Map bg covers roughly: X -4000..4500, Y -4500..8000 (north up)
-// These positions are tuned visually for the dark map background.
+// ─── Map pins ─────────────────────────────────────────────────────────────────
 var MAP_PIN_POSITIONS = {
   'city_outskirts':  { x: 51, y: 54 },
   'industrial_port': { x: 62, y: 72 },
@@ -172,13 +228,9 @@ function buildPins(maps) {
 function selectMap(mapId) {
   S.selectedMap = mapId;
   nuiCallback('setMap', { mapId: mapId });
-
-  // Highlight pin
   D.mapPins.querySelectorAll('.map-pin').forEach(function(p) {
     p.classList.toggle('active', p.dataset.mapId === mapId);
   });
-
-  // Update left panel info
   var m = S.maps.find(function(x) { return x.id === mapId; });
   if (!m) return;
   D.miName.textContent    = m.name.toUpperCase();
@@ -186,17 +238,14 @@ function selectMap(mapId) {
   D.miDesc.textContent    = m.description || 'Select your insertion point and deploy into the operation zone.';
   D.miPlayers.textContent = m.players || '2–20';
   D.miDiff.textContent    = m.label   || 'NORMAL';
-
-  // Enable deploy button
-  D.btnQueue.textContent = 'DEPLOY';
-  D.btnQueue.disabled    = false;
+  D.btnQueue.textContent  = 'DEPLOY';
+  D.btnQueue.disabled     = false;
 }
 
-// ─── Party render ─────────────────────────────────────
+// ─── Party render ─────────────────────────────────────────────────────────────
 function renderParty() {
   var p = S.party;
   D.memberList.innerHTML = '';
-
   if (!p || !p.members || !p.members.length) {
     D.memberList.innerHTML = '<li class="member-empty">No fireteam</li>';
     if (D.memberCount) D.memberCount.textContent = '0/1';
@@ -207,7 +256,7 @@ function renderParty() {
       li.innerHTML = '<span>' + m.name + '</span>' +
         (m.leader
           ? '<span class="member-leader-badge">LEAD</span>'
-          : '<button style="font-size:10px;padding:2px 8px;border:1px solid rgba(217,79,79,.4);border-radius:2px;color:#d94f4f;background:rgba(217,79,79,.08);letter-spacing:.08em" data-src="' + m.src + '">KICK</button>'
+          : '<button style="font-size:11px;padding:3px 9px;border:1px solid rgba(217,79,79,.4);border-radius:2px;color:#d94f4f;background:rgba(217,79,79,.08);letter-spacing:.08em" data-src="' + m.src + '">KICK</button>'
         );
       D.memberList.appendChild(li);
     });
@@ -216,11 +265,9 @@ function renderParty() {
     });
     if (D.memberCount) D.memberCount.textContent = p.members.length + '/' + p.members.length;
   }
-
   D.modeBtns.forEach(function(b) {
     b.classList.toggle('active', b.dataset.mode === ((p && p.mode) || S.mode));
   });
-
   if (p && p.inQueue) {
     show(D.queueStatus); hide(D.btnQueue); show(D.btnCancelQ);
     if (!S.queueTick) queueStart();
@@ -230,7 +277,7 @@ function renderParty() {
   }
 }
 
-// ─── Message handler ──────────────────────────────────
+// ─── Message handler ──────────────────────────────────────────────────────────
 window.addEventListener('message', function(e) {
   var action  = e.data.action;
   var payload = e.data.payload || {};
@@ -244,7 +291,6 @@ window.addEventListener('message', function(e) {
       if (payload.maps && payload.maps.length) {
         S.maps = payload.maps;
         buildPins(payload.maps);
-        // Auto-select first map
         if (!S.selectedMap) selectMap(payload.maps[0].id);
       }
       renderParty();
@@ -269,6 +315,7 @@ window.addEventListener('message', function(e) {
       S.inviteKey = payload.inviteKey;
       D.inviteMsg.textContent = payload.fromName + ' invited you to their fireteam';
       show(D.inviteToast);
+      Sounds.invite();
       break;
 
     case 'notification':
@@ -280,6 +327,7 @@ window.addEventListener('message', function(e) {
       show(D.matchFound);
       if (payload.mapName) D.overlayMap.textContent = payload.mapName.toUpperCase();
       cntStart(payload.countdown || 5);
+      Sounds.matchFound();
       break;
 
     case 'matchStart':
@@ -299,6 +347,7 @@ window.addEventListener('message', function(e) {
 
     case 'extractionStart':
       show(D.exfilProg);
+      Sounds.extractionStart();
       if (payload.duration) {
         D.exfilBar.style.transition = 'width ' + payload.duration + 's linear';
         requestAnimationFrame(function() {
@@ -312,13 +361,14 @@ window.addEventListener('message', function(e) {
       hide(D.exfilProg);
       D.exfilBar.style.transition = 'none';
       D.exfilBar.style.width = '0%';
+      Sounds.extractionCancel();
       break;
 
     case 'extractionSuccess':
       hide(D.exfilProg); hide(D.matchHud);
       show(D.successScreen);
       pillStop();
-      // DO NOT call requestOpenStash here — server handles stash after bucket restore
+      Sounds.extractionSuccess();
       setTimeout(function() { hide(D.successScreen); }, 3500);
       break;
 
@@ -329,16 +379,18 @@ window.addEventListener('message', function(e) {
       D.exfilBar.style.transition = 'none'; D.exfilBar.style.width = '0%';
       if (S.cntTick) { clearInterval(S.cntTick); S.cntTick = null; }
       S.party = null;
+      Sounds.returnedToLobby();
       break;
 
     case 'playerDied':
       hide(D.matchHud); hide(D.exfilProg);
       pillStop(); show(D.deathScreen);
+      Sounds.playerDied();
       break;
   }
 });
 
-// ─── Button events ────────────────────────────────────
+// ─── Button events ────────────────────────────────────────────────────────────
 D.btnClose.addEventListener('click', function() {
   nuiCallback('closeMenu', {});
   hide(D.mainScreen);
