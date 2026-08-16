@@ -1,0 +1,2 @@
+-- cl_nui.lua  ·  Intentionally empty - all NUI logic is in cl_party.lua
+-- This file is kept so fxmanifest.lua does not need to change.

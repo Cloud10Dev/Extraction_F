@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=4" />
+  <title>GAMEMODEX</title>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN SCREEN  — map view + left panel
+═══════════════════════════════════════════════════════ -->
+<div id="main-screen" class="main-screen hidden">
+
+  <!-- GTA MAP BACKGROUND -->
+  <div class="map-bg">
+    <!-- Map pins injected by JS -->
+    <div id="map-pins" class="map-pins"></div>
+  </div>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Header -->
+    <div class="lp-header">
+      <svg class="lp-logo" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+        <path d="M11 1L19 6V11C19 15.4 15.4 19.8 11 21C6.6 19.8 3 15.4 3 11V6L11 1Z" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M7 11l3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="lp-title">OPERATIONS</span>
+      <button id="btn-storage" class="btn-storage" title="Storage">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M1 6h12" stroke="currentColor" stroke-width="1.2"/></svg>
+        STORAGE
+      </button>
+      <button id="btn-close-menu" class="btn-x" aria-label="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Map info (shown when a map pin is selected) -->
+    <div id="map-info" class="map-info">
+      <div class="mi-mode-row">
+        <span class="mi-mode-label" id="mi-mode">TACTICAL OPS · NORMAL</span>
+      </div>
+      <h2 class="mi-name" id="mi-name">SELECT A ZONE</h2>
+      <div class="mi-thumb" id="mi-thumb"></div>
+      <p class="mi-desc" id="mi-desc">Click a zone marker on the map to begin.</p>
+      <div class="mi-meta">
+        <span class="mi-meta-item"><span class="mi-meta-label">OPERATORS</span><span class="mi-meta-val" id="mi-players">—</span></span>
+        <span class="mi-meta-item"><span class="mi-meta-label">DIFFICULTY</span><span class="mi-meta-val" id="mi-diff">—</span></span>
+      </div>
+    </div>
+
+    <!-- Insertion mode -->
+    <div class="lp-section">
+      <div class="lp-section-label">INSERTION MODE</div>
+      <div class="mode-row">
+        <button class="mode-btn active" data-mode="Solo">SOLO</button>
+        <button class="mode-btn" data-mode="Duo">DUO</button>
+        <button class="mode-btn" data-mode="Squad">SQUAD</button>
+      </div>
+    </div>
+
+    <!-- Fireteam -->
+    <div class="lp-section">
+      <div class="lp-section-label">FIRETEAM <span id="member-count" class="lp-badge">0/1</span></div>
+      <ul id="member-list" class="member-list">
+        <li class="member-empty">No fireteam</li>
+      </ul>
+      <div class="invite-row">
+        <input id="invite-input" type="number" min="1" placeholder="PLAYER ID" class="invite-input" />
+        <button id="btn-invite" class="btn-invite">INVITE</button>
+      </div>
+    </div>
+
+    <!-- Queue status -->
+    <div id="queue-status" class="queue-status hidden">
+      <div class="qs-dot"></div>
+      <span class="qs-label">SEARCHING FOR MATCH</span>
+      <span id="queue-time-display" class="qs-time">00:00</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="lp-actions">
+      <button id="btn-queue" class="btn-deploy">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        SELECT MAP
+      </button>
+      <button id="btn-cancel-queue" class="btn-abort hidden">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        ABORT
+      </button>
+      <button id="btn-leave-party" class="btn-leave">LEAVE TEAM</button>
+    </div>
+
+  </div><!-- /left-panel -->
+</div><!-- /main-screen -->
+
+<!-- ═══════════════════════════════════════════════════════
+     PILL HUD (minimized, top-center)
+═══════════════════════════════════════════════════════ -->
+<div id="pill-hud" class="pill-hud hidden">
+  <div class="pill-dot" id="pill-dot"></div>
+  <span id="pill-label">SEARCHING</span>
+  <span id="pill-timer" class="pill-timer">00:00</span>
+  <button id="pill-expand" class="pill-expand" aria-label="Expand">
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MATCH FOUND OVERLAY
+═══════════════════════════════════════════════════════ -->
+<div id="match-found" class="overlay hidden">
+  <div class="overlay-box">
+    <div class="ob-corners"><span></span><span></span><span></span><span></span></div>
+    <div class="ob-badge">MATCH FOUND</div>
+    <div class="ob-ring-wrap">
+      <svg class="ob-ring-svg" viewBox="0 0 100 100">
+        <circle class="ring-bg" cx="50" cy="50" r="42"/>
+        <circle class="ring-fill" id="countdown-ring" cx="50" cy="50" r="42"/>
+      </svg>
+      <span id="countdown-num" class="ob-num">5</span>
+    </div>
+    <p id="match-found-text" class="ob-sub">DEPLOYING IN 5s</p>
+    <div class="ob-bar-bg"><div id="deploy-bar" class="ob-bar"></div></div>
+    <p id="overlay-map-name" class="ob-map">CITY OUTSKIRTS</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     IN-MATCH HUD (bottom-left)
+═══════════════════════════════════════════════════════ -->
+<div id="match-hud" class="match-hud hidden">
+  <div class="mh-header">EXFIL POINTS</div>
+  <ul id="extract-pt-list" class="extract-pt-list"></ul>
+  <div class="mh-status"><div class="mh-dot"></div>OPERATION LIVE</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     EXTRACTION PROGRESS (bottom-center)
+═══════════════════════════════════════════════════════ -->
+<div id="extraction-progress" class="exfil-progress hidden">
+  <div class="ep-label">EXTRACTING</div>
+  <div class="ep-bar-bg"><div id="exfil-bar" class="ep-bar"></div></div>
+  <div class="ep-hint">STAY WITHIN ZONE</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     DEATH SCREEN
+═══════════════════════════════════════════════════════ -->
+<div id="death-screen" class="death-screen hidden">
+  <div class="ds-cross">✕</div>
+  <div class="ds-title">K.I.A.</div>
+  <div class="ds-sub">RETURNING TO LOBBY</div>
+  <div class="ds-bar-bg"><div id="death-bar" class="ds-bar"></div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     EXTRACTION SUCCESS
+═══════════════════════════════════════════════════════ -->
+<div id="extraction-success" class="success-screen hidden">
+  <svg width="52" height="52" viewBox="0 0 52 52" fill="none"><path d="M10 26l12 12 20-20" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="ss-title">EXTRACTED</div>
+  <div class="ss-sub">OPENING STASH…</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     INCOMING INVITE TOAST
+═══════════════════════════════════════════════════════ -->
+<div id="invite-toast" class="invite-toast hidden">
+  <div class="it-header">FIRETEAM INVITE</div>
+  <p id="invite-toast-msg" class="it-msg">Loading…</p>
+  <div class="it-actions">
+    <button id="btn-accept-invite" class="btn-deploy" style="flex:1;padding:8px">ACCEPT</button>
+    <button id="btn-decline-invite" class="btn-leave" style="flex:1;padding:8px">DECLINE</button>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notif-container" class="notif-container" aria-live="polite"></div>
+
+<script src="app.js?v=4"></script>
+</body>
+</html>
