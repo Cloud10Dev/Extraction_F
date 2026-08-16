@@ -1,5 +1,5 @@
-// GAMEMODEX · app.js v6
-// Changes: Web Audio sounds system + wired into all message events
+// GAMEMODEX · app.js v7
+// Changes: shared queueEpoch syncs pill+panel timers, Web Audio sounds wired to all events
 
 // ─── Sound system (Web Audio API — zero external files needed) ───────────────
 var _audioCtx = null;
@@ -126,6 +126,7 @@ var S = {
   cntTick:     null,
   pillTick:    null,
   pillMode:    null,
+  queueEpoch:  null,   // shared epoch — pill + panel timers read same value
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -150,12 +151,14 @@ function pillStart(mode) {
   S.pillMode = mode;
   D.pillDot.classList.toggle('in-match', mode === 'match');
   D.pillLabel.textContent = mode === 'match' ? 'IN OPERATION' : 'SEARCHING';
-  D.pillTimer.textContent = '00:00';
   show(D.pillHud);
   if (S.pillTick) clearInterval(S.pillTick);
-  var t0 = Date.now();
+  // Re-use existing queueEpoch if already running (keeps sync with panel)
+  if (!S.queueEpoch) S.queueEpoch = Date.now();
+  var epoch = S.queueEpoch;
+  D.pillTimer.textContent = fmt(Math.floor((Date.now() - epoch) / 1000));
   S.pillTick = setInterval(function() {
-    D.pillTimer.textContent = fmt(Math.floor((Date.now()-t0)/1000));
+    D.pillTimer.textContent = fmt(Math.floor((Date.now() - epoch) / 1000));
   }, 1000);
 }
 function pillStop() {
@@ -166,14 +169,19 @@ function pillStop() {
 // ─── Queue timer ──────────────────────────────────────────────────────────────
 function queueStart() {
   if (S.queueTick) clearInterval(S.queueTick);
-  var t0 = Date.now();
+  S.queueEpoch = Date.now();  // single source of truth
   S.queueTick = setInterval(function() {
-    if (D.queueTime) D.queueTime.textContent = fmt(Math.floor((Date.now()-t0)/1000));
+    var elapsed = fmt(Math.floor((Date.now() - S.queueEpoch) / 1000));
+    if (D.queueTime) D.queueTime.textContent = elapsed;
+    // mirror to pill if it's in queue mode
+    if (D.pillTimer && S.pillMode === 'queue') D.pillTimer.textContent = elapsed;
   }, 1000);
 }
 function queueStop() {
   if (S.queueTick) { clearInterval(S.queueTick); S.queueTick = null; }
+  S.queueEpoch = null;
   if (D.queueTime) D.queueTime.textContent = '00:00';
+  if (D.pillTimer) D.pillTimer.textContent = '00:00';
 }
 
 // ─── Match countdown ──────────────────────────────────────────────────────────
@@ -312,10 +320,10 @@ window.addEventListener('message', function(e) {
       break;
 
     case 'incomingInvite':
+      Sounds.invite();
       S.inviteKey = payload.inviteKey;
       D.inviteMsg.textContent = payload.fromName + ' invited you to their fireteam';
       show(D.inviteToast);
-      Sounds.invite();
       break;
 
     case 'notification':
@@ -323,11 +331,11 @@ window.addEventListener('message', function(e) {
       break;
 
     case 'matchFound':
+      Sounds.matchFound();
       pillStop(); queueStop();
       show(D.matchFound);
       if (payload.mapName) D.overlayMap.textContent = payload.mapName.toUpperCase();
       cntStart(payload.countdown || 5);
-      Sounds.matchFound();
       break;
 
     case 'matchStart':
@@ -346,8 +354,8 @@ window.addEventListener('message', function(e) {
       break;
 
     case 'extractionStart':
-      show(D.exfilProg);
       Sounds.extractionStart();
+      show(D.exfilProg);
       if (payload.duration) {
         D.exfilBar.style.transition = 'width ' + payload.duration + 's linear';
         requestAnimationFrame(function() {
@@ -358,34 +366,34 @@ window.addEventListener('message', function(e) {
 
     case 'extractionCancel':
     case 'extractionFail':
+      Sounds.extractionCancel();
       hide(D.exfilProg);
       D.exfilBar.style.transition = 'none';
       D.exfilBar.style.width = '0%';
-      Sounds.extractionCancel();
       break;
 
     case 'extractionSuccess':
+      Sounds.extractionSuccess();
       hide(D.exfilProg); hide(D.matchHud);
       show(D.successScreen);
       pillStop();
-      Sounds.extractionSuccess();
       setTimeout(function() { hide(D.successScreen); }, 3500);
       break;
 
     case 'returnedToLobby':
+      Sounds.returnedToLobby();
       hide(D.matchHud); hide(D.deathScreen);
       hide(D.exfilProg); hide(D.successScreen); hide(D.matchFound);
-      pillStop();
+      pillStop(); queueStop();
       D.exfilBar.style.transition = 'none'; D.exfilBar.style.width = '0%';
       if (S.cntTick) { clearInterval(S.cntTick); S.cntTick = null; }
       S.party = null;
-      Sounds.returnedToLobby();
       break;
 
     case 'playerDied':
+      Sounds.playerDied();
       hide(D.matchHud); hide(D.exfilProg);
       pillStop(); show(D.deathScreen);
-      Sounds.playerDied();
       break;
   }
 });
