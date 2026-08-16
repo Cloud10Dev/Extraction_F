@@ -1,9 +1,10 @@
--- client/cl_ai.lua · v2 — ox_inventory random weapons + correct ammo per weapon
+-- client/cl_ai.lua · v3
+-- Fixes: spawn is now triggered by MatchTeleport event (same as extraction).
+-- Uses inMatch flag to guard; cleans up on lobby return/death.
 
 local spawnedPeds = {}
 local aiActive    = false
 
--- Local fallback weapon pool (used if server doesn't respond in time)
 local FALLBACK_WEAPONS = {
     { hash = `WEAPON_PISTOL`,         ammo = 24 },
     { hash = `WEAPON_PISTOL_MK2`,     ammo = 30 },
@@ -28,12 +29,12 @@ local AI_MODELS = {
     `a_m_y_skater_01`,
 }
 
--- Ask the server for a random weapon from the ox_inventory item registry.
--- Calls cb({ hash, ammo }) — falls back to local pool after 1200ms.
+-- Ask server for random ox_inventory weapon; falls back after 1200ms
 local function GetRandomOxWeapon(cb)
     local done = false
-
-    RegisterNetEvent('extraction:receiveRandomWeapon', function(data)
+    local evName = 'extraction:receiveRandomWeapon_' .. GetGameTimer()
+    RegisterNetEvent(evName)
+    AddEventHandler(evName, function(data)
         if done then return end
         done = true
         if data and data.hash then
@@ -42,9 +43,7 @@ local function GetRandomOxWeapon(cb)
             cb(FALLBACK_WEAPONS[math.random(#FALLBACK_WEAPONS)])
         end
     end)
-
-    TriggerServerEvent('extraction:getRandomWeapon')
-
+    TriggerServerEvent('extraction:getRandomWeapon', evName)
     SetTimeout(1200, function()
         if not done then
             done = true
@@ -53,48 +52,50 @@ local function GetRandomOxWeapon(cb)
     end)
 end
 
-local function LoadModel(modelHash)
-    if not IsModelInCdimage(modelHash) then return false end
-    RequestModel(modelHash)
+local function LoadModel(h)
+    if not IsModelInCdimage(h) then return false end
+    RequestModel(h)
     local t = 0
-    while not HasModelLoaded(modelHash) do
+    while not HasModelLoaded(h) do
         Wait(50); t = t + 50
         if t > 4000 then return false end
     end
     return true
 end
 
-local function SpawnAiPed(spawnCoords, wep)
-    local modelHash = AI_MODELS[math.random(#AI_MODELS)]
-    if not LoadModel(modelHash) then return nil end
+local function SpawnAiPed(coords, wep)
+    local model = AI_MODELS[math.random(#AI_MODELS)]
+    if not LoadModel(model) then return end
 
-    local ox = math.random(-20, 20) + 0.0
-    local oy = math.random(-20, 20) + 0.0
-    local x, y, z = spawnCoords.x + ox, spawnCoords.y + oy, spawnCoords.z
+    local ox = math.random(-25, 25) + 0.0
+    local oy = math.random(-25, 25) + 0.0
+    local x, y, z = coords.x + ox, coords.y + oy, coords.z
 
-    local found, gz = GetGroundZFor_3dCoord(x, y, z + 5.0, false)
+    local found, gz = GetGroundZFor_3dCoord(x, y, z + 10.0, false)
     if found then z = gz end
 
-    local ped = CreatePed(4, modelHash, x, y, z, math.random(0, 359) + 0.0, true, true)
-    SetModelAsNoLongerNeeded(modelHash)
-    if not DoesEntityExist(ped) then return nil end
+    local ped = CreatePed(4, model, x, y, z, math.random(0, 359) + 0.0, true, true)
+    SetModelAsNoLongerNeeded(model)
+    if not DoesEntityExist(ped) then return end
 
     SetEntityOnGroundProperly(ped)
     SetPedCanRagdoll(ped, true)
-
     GiveWeaponToPed(ped, wep.hash, wep.ammo, false, true)
     SetCurrentPedWeapon(ped, wep.hash, true)
     SetPedAmmo(ped, wep.hash, wep.ammo)
     SetPedDropsWeaponsWhenDead(ped, true)
-
     SetEntityMaxHealth(ped, 200)
     SetEntityHealth(ped, math.random(120, 180))
     SetPedArmour(ped, 0)
 
-    SetPedRelationshipGroupHash(ped, GetHashKey('HATES_PLAYER'))
-    SetRelationshipBetweenGroups(5, GetHashKey('HATES_PLAYER'), GetHashKey('PLAYER'))
-    SetRelationshipBetweenGroups(5, GetHashKey('PLAYER'), GetHashKey('HATES_PLAYER'))
+    -- Hostility
+    local playerGroup = GetHashKey('PLAYER')
+    local hatesGroup  = GetHashKey('HATES_PLAYER')
+    SetPedRelationshipGroupHash(ped, hatesGroup)
+    SetRelationshipBetweenGroups(5, hatesGroup, playerGroup)
+    SetRelationshipBetweenGroups(5, playerGroup, hatesGroup)
 
+    -- Combat tuning
     SetPedCombatAbility(ped, 50)
     SetPedCombatRange(ped, 2)
     SetPedCombatMovement(ped, 2)
@@ -108,45 +109,52 @@ local function SpawnAiPed(spawnCoords, wep)
     SetPedFleeAttributes(ped, 0, false)
     SetBlockingOfNonTemporaryEvents(ped, false)
     SetPedCanBeTargetted(ped, true)
-
     TaskCombatPed(ped, PlayerPedId(), 0, 16)
 
-    return ped
+    table.insert(spawnedPeds, ped)
 end
 
-local function SpawnMatchAI(mapData)
-    if not mapData or not mapData.spawns then return end
+local function SpawnWave(data)
+    if not data then return end
     aiActive = true
+    local playerCoords = GetEntityCoords(PlayerPedId())
     local count = math.random(5, 9)
     for i = 1, count do
-        Wait(math.random(300, 900))
+        Wait(math.random(400, 1000))
         if not aiActive then break end
-        local ref = mapData.spawns[math.random(#mapData.spawns)]
         GetRandomOxWeapon(function(wep)
-            if not aiActive then return end
-            local ped = SpawnAiPed(vector3(ref.x, ref.y, ref.z), wep)
-            if ped then
-                table.insert(spawnedPeds, ped)
-            end
+            if aiActive then SpawnAiPed(playerCoords, wep) end
         end)
     end
 end
 
-local function CleanupAI()
+local function CleanupPeds()
     aiActive = false
-    for _, ped in ipairs(spawnedPeds) do
-        if DoesEntityExist(ped) then DeleteEntity(ped) end
+    for _, p in ipairs(spawnedPeds) do
+        if DoesEntityExist(p) then DeleteEntity(p) end
     end
     spawnedPeds = {}
 end
 
+-- ─── Trigger: same MatchTeleport event that cl_extraction uses ──────────────
+-- We wait 3s after teleport so the player has landed before peds spawn
 RegisterNetEvent(Config.Events.MatchTeleport, function(data)
+    CleanupPeds()  -- clear any previous match peds
     SetTimeout(3000, function()
-        if not inMatch then return end
-        local mapCfg = Config.GetMap(data.mapId or 'city_outskirts')
-        SpawnMatchAI(mapCfg)
+        if inMatch then  -- inMatch is set by cl_extraction before this fires
+            SpawnWave(data)
+        end
     end)
 end)
 
-RegisterNetEvent(Config.Events.RespawnLobby,      function() CleanupAI() end)
-RegisterNetEvent(Config.Events.ExtractionSuccess, function() CleanupAI() end)
+RegisterNetEvent(Config.Events.RespawnLobby, function()
+    CleanupPeds()
+end)
+
+RegisterNetEvent(Config.Events.ExtractionSuccess, function()
+    CleanupPeds()
+end)
+
+RegisterNetEvent('extraction:aiCleanup', function()
+    CleanupPeds()
+end)

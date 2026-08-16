@@ -1,8 +1,12 @@
--- cl_extraction.lua · Zone drawing, extraction, bucket-aware return
+-- cl_extraction.lua · v3
+-- Extraction is proximity-based: player walks into zone, timer starts automatically.
+-- Player CAN move freely inside the zone. If they leave, extraction cancels.
+-- No key press required.
 inMatch = false
 local matchData       = nil
-local extractionState = 'idle'
+local extractionState = 'idle'   -- idle | near | extracting
 local cancelProgress  = nil
+local exfilThread     = nil
 
 RegisterNetEvent(Config.Events.MatchTeleport, function(data)
     matchData       = data
@@ -43,6 +47,7 @@ function DrawZone(zone)
     end
 end
 
+-- ─── Main extraction loop ───────────────────────────────────────────────────
 CreateThread(function()
     while true do
         Wait(inMatch and 0 or 500)
@@ -57,79 +62,75 @@ CreateThread(function()
             if pt.active then
                 local ptVec = vector3(pt.coords.x, pt.coords.y, pt.coords.z)
                 local dist  = #(myPos - ptVec)
+
+                -- Draw marker
                 DrawMarker(1,
                     pt.coords.x, pt.coords.y, pt.coords.z,
                     0,0,0, 0,0,0,
                     radius*2, radius*2, 1.5,
                     232, 97, 42, 120,
                     false, true, 2, nil, nil, false)
-                CUtils.Draw3DText(ptVec, pt.label..'\n[E] Extract')
-                if dist < nearestDist then nearestDist=dist; nearest=i end
+
+                -- Label: no key prompt anymore
+                CUtils.Draw3DText(ptVec, pt.label .. '\nExtract')
+
+                if dist < nearestDist then nearestDist = dist; nearest = i end
             end
         end
 
+        -- ── Proximity detection ─────────────────────────────────────────────
         if nearest and nearestDist <= radius then
-            nearestPtIndex = nearest
+            -- Just entered zone
             if extractionState == 'idle' then
                 extractionState = 'near'
-                CUtils.Notify('Press [E] to begin extraction.', 'info')
-            end
-            if IsControlJustPressed(0, 38) and extractionState == 'near' then
+                CUtils.Notify('Extraction started — stay in zone!', 'success')
                 StartExtraction(nearest)
             end
         else
-            if extractionState == 'near' then
+            -- Player left zone while extracting → cancel
+            if extractionState == 'extracting' then
+                CancelExtraction('Left extraction zone!')
+            elseif extractionState == 'near' then
+                -- edge case: started but server didn't respond yet
                 extractionState = 'idle'
             end
         end
+
         ::continue::
     end
 end)
 
+-- ─── Start extraction ───────────────────────────────────────────────────────
 function StartExtraction(ptIndex)
     if extractionState ~= 'near' then return end
     extractionState = 'extracting'
-    local startPos = GetEntityCoords(PlayerPedId())
-    FreezeEntityPosition(PlayerPedId(), true)
+    -- Player can still move — no freeze
     TriggerServerEvent(Config.Events.ExtractionStart, ptIndex)
     CUtils.SendNui('extractionStart', { duration = Config.Extraction.Duration })
-    cancelProgress = CUtils.ProgressBar(Config.Extraction.Duration, 'Extracting...', function() end, nil)
-    CreateThread(function()
-        Wait(200)
-        while extractionState == 'extracting' do
-            Wait(100)
-            if #(GetEntityCoords(PlayerPedId()) - startPos) > Config.Extraction.InterruptRange then
-                CancelExtraction('You moved too far.')
-                return
-            end
-        end
-    end)
+    cancelProgress = CUtils.ProgressBar(Config.Extraction.Duration, 'Extracting — stay in zone...', function() end, nil)
 end
 
+-- ─── Cancel extraction ──────────────────────────────────────────────────────
 function CancelExtraction(reason)
     if extractionState ~= 'extracting' then return end
     if cancelProgress then cancelProgress(); cancelProgress = nil end
-    FreezeEntityPosition(PlayerPedId(), false)
     extractionState = 'idle'
     TriggerServerEvent(Config.Events.ExtractionCancel)
     CUtils.SendNui('extractionCancel', {})
     CUtils.Notify(reason or 'Extraction cancelled.', 'error')
 end
 
+-- ─── Server events ──────────────────────────────────────────────────────────
 RegisterNetEvent(Config.Events.ExtractionSuccess, function()
     if cancelProgress then cancelProgress(); cancelProgress = nil end
-    FreezeEntityPosition(PlayerPedId(), false)
     extractionState = 'idle'
     inMatch         = false
     matchData       = nil
     CUtils.SendNui('extractionSuccess', {})
-    -- Server already: 1) restored bucket, 2) fires OpenStash after 1500ms delay
-    -- Do NOT manually call requestOpenStash here to avoid double open
 end)
 
 RegisterNetEvent(Config.Events.ExtractionFail, function(reason)
     if cancelProgress then cancelProgress(); cancelProgress = nil end
-    FreezeEntityPosition(PlayerPedId(), false)
     extractionState = 'idle'
     CUtils.Notify(reason or 'Extraction failed.', 'error')
     CUtils.SendNui('extractionFail', { reason = reason })
@@ -148,10 +149,9 @@ RegisterNetEvent(Config.Events.RespawnLobby, function()
     matchData       = nil
     extractionState = 'idle'
     if cancelProgress then cancelProgress(); cancelProgress = nil end
-    FreezeEntityPosition(PlayerPedId(), false)
     local spawn = Config.LobbySpawns[math.random(1, #Config.LobbySpawns)]
     CUtils.Teleport(spawn)
-    CUtils.Notify("Returned to lobby.", 'info')
+    CUtils.Notify('Returned to lobby.', 'info')
     CUtils.SendNui('returnedToLobby', {})
 end)
 
